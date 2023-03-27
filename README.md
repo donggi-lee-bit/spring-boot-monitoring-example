@@ -97,7 +97,7 @@ management:
 
 **프로메테우스로 확인** 
 
-![img.png](img.png)
+![img.png](images/img.png)
 프로메테우스로 `my.order` 를 확인하면 위 이미지와 같다
 - 여기서 `my.order` 가 `my_order` 로 명시된 걸 볼 수 있다
   - 프로메테우스는 `.` 을 `_` 로 변경한다
