@@ -173,3 +173,16 @@ public class OrderConfigV2 {
 - Config에 `CountedAspect` 를 등록해야 @Counted 를 인지해서 AOP가 적용된다
 
 이렇게 `AOP`를 이용해서 metric 관리 로직 비즈니스 로직에서 제거할 수 있다.
+
+## 시간 측정 metric, Timer
+
+Timer 는 시간을 측정하는데 사용된다. 실행 시간을 측정한다.
+- Timer 는 다음과 같은 내용을 측정한다
+  - `seconds_count` : 누적 실행 횟수
+  - `seconds_sum` : 실행 시간의 합
+  - `seconds_max` : 최대 실행 시간 (가장 오래 걸린 실행 시간)
+
+`Counter.builder()` 를 사용하듯이 `Timer.builder()` 를 사용하여 생성한다. Timer 를 사용할 때는 `record()` 를 이용한다. `Timer.record()` 내부에 시간을 측정할 함수를 포함시켜주면 된다.
+<br><br>
+
+count, sum, max 와 같은 Timer metric 을 프로메테우스에서 다양하게 사용할 수 있다. 그 중에서 평균 실행 시간을 만들 수도 있는데, `seconds_sum` / `seconds_count` 는 평균 실행 시간을 볼 수 있다.
