@@ -260,3 +260,49 @@ public class OrderConfigV4 {
 ```
 
 타이머 또한 `TimedAspect` 를 적용해주어야 AOP 가 동작하게 된다.
+
+## Gauge metric 등록
+
+값이 오르고 내릴 수 있는 단일 숫자값 메트릭, Gauge.
+```java
+import com.example.springbootmonitoringexample.order.OrderService;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import javax.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class StockConfigV1 {
+
+    @Bean
+    public MyStockMetric myStockMetric(OrderService orderService, MeterRegistry meterRegistry) {
+        return new MyStockMetric(orderService, meterRegistry);
+    }
+
+    @Slf4j
+    static class MyStockMetric {
+
+        private OrderService orderService;
+        private MeterRegistry meterRegistry;
+
+        public MyStockMetric(OrderService orderService, MeterRegistry meterRegistry) {
+            this.orderService = orderService;
+            this.meterRegistry = meterRegistry;
+        }
+
+        @PostConstruct
+        public void init() {
+            Gauge.builder("my.store", orderService, service -> {
+                log.info("stock.gauge call");
+                return service.getStock().get();
+            }).register(meterRegistry);
+        }
+    }
+}
+```
+- `Gauge.builder()` 로 게이지 생성
+- 게이지를 확인하는 함수는 외부에서 메트릭을 확인할 때마다 호출
+  - `http://localhost:8080/actuator/prometheus` 경로로 직접 호출하면 해당 함수가 호출되는 걸 알 수 있다
+- Gauge는 측정 시점의 현재 값만 반환한다 
