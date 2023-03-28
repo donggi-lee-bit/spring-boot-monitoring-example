@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 public class OrderConfigV0 {
 
     @Bean
-    OrderService oderService() {
+    OrderService orderService() {
         return new OrderServiceV0();
     }
 

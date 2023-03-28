@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 public class OrderConfigV1 {
 
     @Bean
-    OrderService oderService(MeterRegistry meterRegistry) {
+    OrderService orderService(MeterRegistry meterRegistry) {
         return new OrderServiceV1(meterRegistry);
     }
 
