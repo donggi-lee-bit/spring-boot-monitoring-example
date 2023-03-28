@@ -107,3 +107,69 @@ management:
 **그라파나로 확인**
 
 시각화된 metric 을 볼 수 있다. Counter 는 계속 증가하기 때문에 특정 시간에 얼마나 증가했는지 보기 위해서는 `increase()`, `rate()` 와 같은 함수와 함께 사용하는 게 좋다.
+
+## AOP로 메트릭 관리 로직 개선
+
+`OrderServiceV1` 은 비즈니스 로직에 모니터링 메트릭 관리 로직이 섞여있다. AOP를 만들어서 이를 개선할 수 있지만 이미 `micrometer` 에서 제공해주고 있다.
+
+### @Counted
+
+```java
+import com.example.springbootmonitoringexample.order.OrderService;
+import io.micrometer.core.annotation.Counted;
+import java.util.concurrent.atomic.AtomicInteger;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class OrderServiceV2 implements OrderService {
+
+    private AtomicInteger stock = new AtomicInteger(100);
+
+    @Counted("my.order")
+    @Override
+    public void order() {
+        log.info("주문");
+        stock.decrementAndGet();
+    }
+
+    @Counted("my.order")
+    @Override
+    public void cancel() {
+        log.info("취소");
+        stock.incrementAndGet();
+    }
+
+    @Override
+    public AtomicInteger getStock() {
+        return stock;
+    }
+}
+```
+- `@Counted` 어노테이션으로 기존에 `Counter.Builder` 로 만들어주던 걸 개선할 수 있다
+  - 메서드에 @Counted 어노테이션으로 메트릭 이름을 지정하면 `tag` 에 method 를 기준으로 분류해서 적용해준다
+
+```java
+import com.example.springbootmonitoringexample.order.OrderService;
+import io.micrometer.core.aop.CountedAspect;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class OrderConfigV2 {
+
+    @Bean
+    OrderService orderService() {
+        return new OrderServiceV2();
+    }
+
+    @Bean
+    public CountedAspect countedAspect(MeterRegistry meterRegistry) {
+        return new CountedAspect(meterRegistry);
+    }
+
+}
+```
+- Config에 `CountedAspect` 를 등록해야 @Counted 를 인지해서 AOP가 적용된다
+
+이렇게 `AOP`를 이용해서 metric 관리 로직 비즈니스 로직에서 제거할 수 있다.
