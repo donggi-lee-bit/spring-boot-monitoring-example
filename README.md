@@ -108,7 +108,7 @@ management:
 
 시각화된 metric 을 볼 수 있다. Counter 는 계속 증가하기 때문에 특정 시간에 얼마나 증가했는지 보기 위해서는 `increase()`, `rate()` 와 같은 함수와 함께 사용하는 게 좋다.
 
-## AOP로 메트릭 관리 로직 개선
+## AOP로 metric 관리 로직 개선
 
 `OrderServiceV1` 은 비즈니스 로직에 모니터링 메트릭 관리 로직이 섞여있다. AOP를 만들어서 이를 개선할 수 있지만 이미 `micrometer` 에서 제공해주고 있다.
 
@@ -186,3 +186,77 @@ Timer 는 시간을 측정하는데 사용된다. 실행 시간을 측정한다.
 <br><br>
 
 count, sum, max 와 같은 Timer metric 을 프로메테우스에서 다양하게 사용할 수 있다. 그 중에서 평균 실행 시간을 만들 수도 있는데, `seconds_sum` / `seconds_count` 는 평균 실행 시간을 볼 수 있다.
+
+## Timer 로직 aop 로 개선
+
+위에서 Counter 를 micrometer가 제공하는 aop로 개선해보았다. 이번에도 metric 관리 로직을 aop로 개선한다.
+
+```java
+import com.example.springbootmonitoringexample.order.OrderService;
+import io.micrometer.core.annotation.Timed;
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
+import lombok.extern.slf4j.Slf4j;
+
+@Timed(value = "my.order")
+@Slf4j
+public class OrderServiceV4 implements OrderService {
+
+    private AtomicInteger stock = new AtomicInteger(100);
+
+    @Override
+    public void order() {
+        log.info("주문");
+        stock.decrementAndGet();
+        sleep(500);
+    }
+
+    private static void sleep(int time) {
+        try {
+            Thread.sleep(time + new Random().nextInt(200));
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void cancel() {
+        log.info("취소");
+        stock.incrementAndGet();
+        sleep(200);
+    }
+
+    @Override
+    public AtomicInteger getStock() {
+        return stock;
+    }
+}
+```
+- 클래스에 `@Timed` 어노테이션 사용
+  - 메서드에도 사용 가능
+- 클래스 내부에 존재하는 모든 `public` 메서드에 타이머가 적용됨
+
+```java
+import com.example.springbootmonitoringexample.order.OrderService;
+import com.example.springbootmonitoringexample.order.v3.OrderServiceV3;
+import io.micrometer.core.aop.TimedAspect;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class OrderConfigV4 {
+
+    @Bean
+    OrderService orderService() {
+        return new OrderServiceV4();
+    }
+
+    @Bean
+    TimedAspect timedAspect(MeterRegistry meterRegistry) {
+        return new TimedAspect(meterRegistry);
+    }
+}
+```
+
+타이머 또한 `TimedAspect` 를 적용해주어야 AOP 가 동작하게 된다.
